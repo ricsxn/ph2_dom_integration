@@ -1,0 +1,61 @@
+#!/bin/bash
+#
+# km3test - startup file
+#
+
+# MYSQL
+[ -z $KM3TEST_NOMYSQL ] &&\
+   mysqld_safe --basedir=/usr --datadir=/var/lib/mysql &
+
+# SSH on 2222 port
+[ -z $KM3TEST_NOSSH ] &&\
+   /usr/sbin/sshd -p 2222 -D &
+
+# NTP
+[ ! -z $NTP_HOST ] &&\
+  sed -i 'env' s/^server.*/server\ $NTP_HOST/ /etc/ntp.conf
+[ -z $KM3TEST_NONTP ] &&\
+   /usr/sbin/ntpd -g -p /var/run/ntpd.pid -l /var/log/ntpd
+
+# DHCP
+# Configure a new DHCP service, using variables:
+#     WRSMAC MAC address of the white rabbit switch
+#     ISWMAC MAC address of the intermediate switch between test PC and WRS network
+#     DHCPDIF Interface name connected to WRS network
+if [ "$WRSMAC"  != "" -a\
+     "$ISWMAC"  != "" ]; then
+  #  The script assumes the WRS management belongs to the DOM network segment as well
+  #  Using an intermediate switch (ISWMAC). Use any value if no ISWMAC is present.
+  cat <<EOF >/etc/dhcp/dhcpd.conf
+default-lease-time 600;
+max-lease-time 7200;
+ddns-update-style none;
+authoritative;
+#WRS (fix IP for WRS management)
+host wrs {
+  hardware ethernet ${WRSMAC};
+  fixed-address 192.168.1.252;
+}
+# Intermediate switch (link between Test host and WRS)
+host isw {
+  hardware ethernet ${ISWMAC};
+  fixed-address 192.168.1.251;
+}
+
+# keep this line unchanged! it is needed for a proper working new_dom.py script
+
+subnet 192.168.1.0 netmask 255.255.255.0 {
+  range dynamic-bootp 192.168.1.10 192.168.1.30;
+  #dynamic-bootp-lease-length 2;
+}
+EOF
+fi
+
+if [ -z $KM3TEST_NODHCPD -a\
+     $DHCPDIF != "" ] &&\
+  dhcpd -4 -f -d --no-pid -cf /etc/dhcp/dhcpd.conf $DHCPDIF 2>/var/log/messages >/var/log/messages
+
+touch .km3test 
+while [ -f .km3test ]; do
+  sleep 3600
+done
