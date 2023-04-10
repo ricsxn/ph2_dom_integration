@@ -2,20 +2,23 @@
 # Base image for KM3 Integration test container
 #
 # Build with: docker build -t km3/km3test:1.0 .
-# Run with: docker run --name km3test --net host -e DISPLAY=192.168.1.157:0.0 -ti -d  km3/km3test:1.0
+# Run with: docker run --name km3test --net host -e DISPLAY=$DISPLAY -ti -d ph2_km3base:1.0
 #
-FROM km3/km3base:1.0
+FROM ph2_km3base:1.0
 
-ENV JPPREL=v14.4.2
+ENV JPPREL=v17.3.2
+ENV TESTUSR=km3net
 
-RUN  wget -q http://sftp.km3net.de/CLB_Builds/clb_rev20210315.tar.gz &&\
-     tar xvfz clb_rev20210315.tar.gz &&\
+USER $TESTUSR
+WORKDIR /home/$TESTUSR
+
+RUN  wget -q https://sftp.km3net.de/CLB_Builds/clbng-v1.0.0b6m1-b6a13952-fw.tar.gz &&\
+     tar xvfz clbng-v1.0.0b6m1-b6a13952-fw.tar.gz &&\
      git clone https://km3net%40km3net.de:pyrosoma@git.km3net.de/vpestel/tedi.git
 RUN  ROOTTGZ=https://root.cern/download/root_v6.20.06.Linux-centos7-x86_64-gcc4.8.tar.gz &&\
      wget -q $ROOTTGZ -O $(basename $ROOTTGZ) &&\
      tar -xzvf $(basename $ROOTTGZ)
-RUN  source root/bin/thisroot.sh &&\
-     echo "#!/bin/bash" > install_JPP.sh &&\
+RUN  echo "#!/bin/bash" > install_JPP.sh &&\
      echo "RELEASE=\$1" >> install_JPP.sh &&\
      echo "mkdir -p \$RELEASE" >> install_JPP.sh &&\
      echo "git clone --branch \$RELEASE --recursive https://km3net%40km3net.de:pyrosoma@git.km3net.de/common/jpp.git \$RELEASE" >> install_JPP.sh &&\
@@ -28,9 +31,10 @@ RUN  source root/bin/thisroot.sh &&\
      echo "make DAQ" >> install_JPP.sh &&\
      echo "export PATH=$PATH:\$(pwd)/out/Linux/bin" >> install_JPP.sh &&\
      echo "make install" >> install_JPP.sh &&\
-     chmod +x install_JPP.sh &&\
+     chmod +x install_JPP.sh
+RUN  source root/bin/thisroot.sh &&\
      ./install_JPP.sh $JPPREL
-     
+
 RUN  pip3 install km3compass --user &&\
      echo "#!/bin/bash" > $HOME/tedi/setup/env_site.sh &&\
      echo "" >> $HOME/tedi/setup/env_site.sh &&\
@@ -57,7 +61,7 @@ RUN  pip3 install km3compass --user &&\
      echo ". /home/$TESTUSR/tedi/setup/env_site.sh " >> ~/.bashrc
 
 # JPP needs DAQ to be compiled again
-RUN /bin/bash -c 'source root/bin/thisroot.sh && cd $JPPREL && source setenv.sh && make DAQ && cd ~/tedi/piezo_mini && make'
+RUN /bin/bash -c "source root/bin/thisroot.sh && cd $JPPREL && source setenv.sh && make DAQ && cd ~/tedi/piezo_mini && make"
 
 # TEDI Configuration (env_site $DATA_DIR)
 RUN cd tedi/setup &&\
@@ -65,7 +69,7 @@ RUN cd tedi/setup &&\
     cd -
 
 # Select Java 11
-RUN echo "1" | sudo alternatives --config java
+RUN echo "2" | sudo alternatives --config java
 
 # TEDI python configuration
 RUN cd tedi &&\
@@ -138,25 +142,33 @@ RUN mv /etc/ntp.conf /etc/ntp.conf_ntp &&\
     echo "restrict 192.168.1.0 mask 255.255.255.0 nomodify notrap" >>/etc/ntp.conf &&\
     echo "server $NTP_HOST iburst" >>/etc/ntp.conf 
 
+# cmdr_events contains useful tools for WWRS DOM testing
+RUN su - $TESTUSR -c "git clone https://git.km3net.de/rbruno/cmdr_events.git" &&\
+    su - $TESTUSR -c "mkdir -p ~/bin" &&\
+    su - $TESTUSR -c "cp cmdr_events/wrs_setup.sh ~/bin" &&\
+    su - $TESTUSR -c "cp cmdr_events/get_clbs ~/bin" &&\
+    su - $TESTUSR -c "cp cmdr_events/ctrl_mon ~/bin" &&\
+    su - $TESTUSR -c "cp cmdr_events/cmdr_commons ~/bin" &&\
+    su - $TESTUSR -c "cp cmdr_events/ctrl.conf ~/bin"
 
 # Script fixes
-RUN sed -i s/"if (p->ifa_addr->sa_family == AF_INET  ||"/"if (p->ifa_addr == NULL) continue;\n\tif (p->ifa_addr->sa_family == AF_INET  ||"/ /home/$TESTUSR/$JPPREL/software/JSystem/JNetwork.hh &&\
-    sed -i s/^ssh.*/"JLigier-local.sh \$PORT \$OPTION"/ /home/$TESTUSR/$JPPREL/out/Linux/bin/JLigier.sh &&\
-    sed -i s/^echo\ \"#\ Setting\ environment\ variables.*/"[[\ \"\$-\"\ =\ *\"i\"*\ ]]\ \&\&\ echo\ \"# Setting environment variables for JPP software\""/ /home/$TESTUSR/$JPPREL/setenv.sh &&\
-    source /home/$TESTUSR/root/bin/thisroot.sh &&\
-    echo "#!/bin/bash" >> /home/$TESTUSR/recompile.sh &&\
-    echo "cd /home/$TESTUSR/\$JPPREL" >> /home/$TESTUSR/recompile.sh &&\
-    echo "source setenv.sh" >> /home/$TESTUSR/recompile.sh &&\
-    echo "make" >> /home/$TESTUSR/recompile.sh &&\
-    echo "make DAQ" >> /home/$TESTUSR/recompile.sh &&\
-    echo "make install" >> /home/$TESTUSR/recompile.sh &&\
-    chmod +x /home/$TESTUSR/recompile.sh &&\
-    /home/$TESTUSR/recompile.sh &&\
-    rm -f /home/$TESTUSR/recompile.sh &&\
-    su - $TESTUSR -c "echo "" | ssh-keygen -t rsa -q -N ''" &&\
-    su - $TESTUSR -c "cat .ssh/id_rsa.pub >> .ssh/authorized_keys" &&\
-    chmod 700 /home/$TESTUSR/.ssh/authorized_keys &&\
-    echo "end_of_fixes"
+#RUN sed -i s/"if (p->ifa_addr->sa_family == AF_INET  ||"/"if (p->ifa_addr == NULL) continue;\n\tif (p->ifa_addr->sa_family == AF_INET  ||"/ /home/$TESTUSR/$JPPREL/software/JSystem/JNetwork.hh &&\
+#    sed -i s/^ssh.*/"JLigier-local.sh \$PORT \$OPTION"/ /home/$TESTUSR/$JPPREL/out/Linux/bin/JLigier.sh &&\
+#    sed -i s/^echo\ \"#\ Setting\ environment\ variables.*/"[[\ \"\$-\"\ =\ *\"i\"*\ ]]\ \&\&\ echo\ \"# Setting environment variables for JPP software\""/ /home/$TESTUSR/$JPPREL/setenv.sh &&\
+#    source /home/$TESTUSR/root/bin/thisroot.sh &&\
+#    echo "#!/bin/bash" >> /home/$TESTUSR/recompile.sh &&\
+#    echo "cd /home/$TESTUSR/\$JPPREL" >> /home/$TESTUSR/recompile.sh &&\
+#    echo "source setenv.sh" >> /home/$TESTUSR/recompile.sh &&\
+#    echo "make" >> /home/$TESTUSR/recompile.sh &&\
+#    echo "make DAQ" >> /home/$TESTUSR/recompile.sh &&\
+#    echo "make install" >> /home/$TESTUSR/recompile.sh &&\
+#    chmod +x /home/$TESTUSR/recompile.sh &&\
+#    /home/$TESTUSR/recompile.sh &&\
+#    rm -f /home/$TESTUSR/recompile.sh &&\
+#    su - $TESTUSR -c "echo "" | ssh-keygen -t rsa -q -N ''" &&\
+#    su - $TESTUSR -c "cat .ssh/id_rsa.pub >> .ssh/authorized_keys" &&\
+#    chmod 700 /home/$TESTUSR/.ssh/authorized_keys &&\
+#    echo "end_of_fixes"
 
 # Execution script
 COPY km3test /usr/km3test

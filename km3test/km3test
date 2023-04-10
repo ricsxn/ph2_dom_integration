@@ -4,17 +4,18 @@
 #
 
 # MYSQL
-[ -z $KM3TEST_NOMYSQL ] &&\
+[ -z "$KM3TEST_NOMYSQL" ] &&\
    mysqld_safe --basedir=/usr --datadir=/var/lib/mysql &
 
 # SSH on 2222 port
-[ -z $KM3TEST_NOSSH ] &&\
+[ -z "$KM3TEST_NOSSH" ] &&\
    /usr/sbin/sshd -p 2222 -D &
 
 # NTP
-[ ! -z $NTP_HOST ] &&\
-  sed -i 'env' s/^server.*/server\ $NTP_HOST/ /etc/ntp.conf
-[ -z $KM3TEST_NONTP ] &&\
+[ -n "$NTP_HOST" ] &&\
+  [ "$NTP_HOST" != "192.168.1.1" ] &&\
+    sed -i 'env' s/^server.*/server\ "$NTP_HOST"/ /etc/ntp.conf
+[ -z "$KM3TEST_NONTP" ] &&\
    /usr/sbin/ntpd -g -p /var/run/ntpd.pid -l /var/log/ntpd
 
 # DHCP
@@ -22,8 +23,7 @@
 #     WRSMAC MAC address of the white rabbit switch
 #     ISWMAC MAC address of the intermediate switch between test PC and WRS network
 #     DHCPDIF Interface name connected to WRS network
-if [ "$WRSMAC"  != "" -a\
-     "$ISWMAC"  != "" ]; then
+if [ -n "$WRSMAC" ] && [ -n "$ISWMAC" ]; then
   #  The script assumes the WRS management belongs to the DOM network segment as well
   #  Using an intermediate switch (ISWMAC). Use any value if no ISWMAC is present.
   cat <<EOF >/etc/dhcp/dhcpd.conf
@@ -51,11 +51,13 @@ subnet 192.168.1.0 netmask 255.255.255.0 {
 EOF
 fi
 
-if [ -z $KM3TEST_NODHCPD -a\
-     $DHCPDIF != "" ] &&\
-  dhcpd -4 -f -d --no-pid -cf /etc/dhcp/dhcpd.conf $DHCPDIF 2>/var/log/messages >/var/log/messages
+[ -z "$KM3TEST_NODHCPD" ] &&\
+  [ "$DHCPDIF" != "" ] &&\
+    dhcpd -4 -f -d --no-pid -cf /etc/dhcp/dhcpd.conf "$DHCPDIF" 2>/var/log/messages >/var/log/messages
 
+echo "Started km3test"
 touch .km3test 
 while [ -f .km3test ]; do
   sleep 3600
 done
+echo "Terminated km3test"
