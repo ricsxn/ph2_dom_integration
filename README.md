@@ -74,7 +74,7 @@ Then it is possible to connect it using:
 
  or directly: `docker exec -ti km3test gnome-terminal`
 
- If this last command does not work, please verify the correctness of the passed DISPLAY variable at container creation, being sure X window connections are allowed by xhost (e.g. `xhost +`).
+ If this last command does not work, please verify the correctness of the passed DISPLAY variable at container creation, being sure X window connections are allowed by command `xhost +`.
 
 **wargning** Once connecting to the continer using the above statemtns, the current user is `root` and the current path is `/usr`; so that the next action is to swith to the test user `km3net` using the command:
 
