@@ -14,16 +14,10 @@ Users can easily build by their own images just issuing the following commands:
 ### To build km3base image:
 ```bash
 cd km3base
-docker build -t km3/km3base:1.0 .
+make image
 ```
 
-### To build km3base image:
-```bash
-cd km3test
-docker build -t km3/km3base:1.0 .
-```
-
-Above statements require a standard docker installation and to perform both operation it is necessary a considerable amount of time due to the huge amount of packages to install and the compilation time for the JPP software.
+Above statements require a standard docker installation and to perform the operation it is necessary a considerable amount of time due to the huge amount of packages to install and the time required to build the JPP software.
 Image files will require almost 6GB.
 
 # km3test usage
@@ -37,7 +31,7 @@ docker run --name km3test -dit --net host\
    -v km3test_mysql:/var/lib/mysql\
    -v km3test_New_DOM_testing_data:/home/km3net/New_DOM_testing_data\
    -e DISPLAT=$DISPLAY\
-   km3/km3test:1.0
+   ph2_km3test:1.0
 ```
 
 The container is using docker 'host' network type, this means that the container will share the network connectivity with the hosting machine. The host machine should be connected to the DOM network being sure autonegotiation is turned off and jumbo frames are enabled in the network card linked to the DOM network.
@@ -66,7 +60,7 @@ It is also possible to setup the following variables:
 Once the km3test container has been executed it is possible to start performing integration tests.
 The first operation is to startup the test container using the command:
 
-`docker run -d --name km3test --net host km3/km3test:1.0`
+`docker run -d --name km3test --net host ph2_km3test:1.0`
 
 Then it is possible to connect it using:
 
@@ -92,13 +86,9 @@ Then it is possible to connect it using:
 
  `ssh -Y -p 2222 -l km3net <km3test_ip>`
 
- Once connected to the test container it is possible to start the slowcontrol GUI aplication executing:
-
- `testctrl_N 1`
-
  **warning** When specify the server IP in the GUI, use the IP address of the docker hosting machine of the network interface linked with the DOM network.
 
- **warning** It could be possible that using standard the Java interpreter (`java-1.8.0-openjdk.x86_64`), the java GUI will not start due to a `java.awt.GraphicsEnvironment.checkHeadless` exception, while other applications such as gnome-terminal are working correctly. In such a case it is suggested to swicht java configuration to the `java-11-openjdk.x86_64` using command: `sudo alternatives --config java`.
+ **warning** The image provides `java-1.8.0-openjdk.x86_64` and `java-11-openjdk.x86_64` as default. To change this configuration use the command: `sudo alternatives --config java`, selecting the alternative java version.
 
  To perform integration tests, just execute commands explained by the integration documentation.
  Belo some **examples**:
@@ -119,7 +109,7 @@ cd tedi
 ./takePiezoData.py 1112 noise
  ```
 
- **warning** In the slowcontrol GUI pay attention of the packet size value, if too high for the network card setting acoustic data may be lost during acquisition.
+ **warning** In the GUI pay attention of the packet size value, if too high for the network card configuration (see MTU=9126), acoustic data may be lost during acquisition.
 
 ```bash
 cd tedi
@@ -137,11 +127,6 @@ cd tedi
 * DAQ requires high efficiency network connectivity, please ensure MTU is set to 9000 (better 9126) and autonegotiation is off for the network interface dedicated to the DOM testing.
 
 
-# Advanced use and next features
-
-With the the current container version is is possible to fully perform functional and acceptance tests, however to support WWRS tests some further configurations are necessary.
-Below these configurationsteps are introduced but, to obtain more detailed information, please refer to [WWRS DOM setuo for integration and test](https://docs.google.com/document/d/1JFzmZ0CjEAoheMIl1L-vFrb4rHwDtwRQ4mFYz4Z-vwo/edit?usp=sharing)
-
 ## WRS firmware update
 
 * First download the [v5.0.1-18-g9c64fb1-20190408](https://drive.google.com/drive/u/2/folders/1u7sGFZ0Fdh0AGuDAJ8-5U5vnN5u5C3Av) firmware. It is suggested to place it into the directory: `/home/km3net/wrs/`
@@ -158,25 +143,10 @@ It might be necessary to update the CLBv4 firmware, in such a case, please refer
 |25/05/2021|[v1.0.0a13m1](http://sftp.km3net.de/CLB_Builds/clbng-v1.0.0a13m1-fw.tar.gz)|Latest official|
 |10/05/2021|[v1.0.0a13m1i2xfix](https://git.km3net.de/clb/clb/-/releases/v1.0.0a13m1i2xfix)|Temporary release fixing I2C to operate at 100kHz|
 |06/10/2021|[v1.0.0a14m1-fw](http://sftp.km3net.de/CLB_Builds/clbng-v1.0.0a14m1-fw.tar.gz)|This release allows to selectively enabling PMTs and includes the fix above|
+|06/10/2021|[v1.0.0b5m1-fw](https://sftp.km3net.de/CLB_Builds/clbng-v1.0.0b5m1-f89826d5-fw.tar.gz)||
+|06/10/2021|[v1.0.0b6m1-fw](https://sftp.km3net.de/CLB_Builds/clbng-v1.0.0b6m1-b6a13952-fw.tar.gz)|Latest|
 
-## clb-client
-
-To communicate with the CLB and manage its internal working statuses, it is necessary to download a control a specific version of clb-client tools.
-
-|date|Image|Notes|
-|----|---|---|
-|01/06/2021|[clb-client-v1.1.0b](http://sftp.km3net.de/CLB_Builds/clb-client-v1.1.0b.tar.gz)|Latest|
-
-Once downloaded the clb-client tools, it is necessary to update the km3net user path with the commands:
-
-```bash
-echo "# CLBv4 settings" >> ~/.bashrc
-echo "PATH=$PATH:$HOME/clb-client-v1.1.0b/bin" >> ~/.bashrc
-```
-
-## Java configuration
-
-The new clb-client tools require Java 11, already supported by the km3test container, it is necessary only to swith java configuration to point this release, using the command: `sudo alternatives --config java`
+**warning** To use the firmware with the [DIA Test Client](https://git.km3net.de/rbruno/dia-test-client/-/tree/master/), extract the archive in `<DTC config dir>/firwmare`
 
 ## cmdr_events
 

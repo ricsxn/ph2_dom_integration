@@ -4,4 +4,4 @@ This image is used by km3test image.
 
 To build this image use the command:
 
-`docker build -t km3/km3base:1.0 .`
+`make image`

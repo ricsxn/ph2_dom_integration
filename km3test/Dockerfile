@@ -145,7 +145,7 @@ RUN mv /etc/ntp.conf /etc/ntp.conf_ntp &&\
     echo "restrict 127.0.0.1" >>/etc/ntp.conf &&\
     echo "restrict ::1" >>/etc/ntp.conf &&\
     echo "restrict $DOMNET mask $DOMNETMASK nomodify notrap" >>/etc/ntp.conf &&\
-    echo "server $NTP_HOST iburst" >>/etc/ntp.conf 
+    echo "server $NTP_HOST iburst" >>/etc/ntp.conf
 
 # cmdr_events contains useful tools for WWRS DOM testing
 RUN su - $TESTUSR -c "git clone https://git.km3net.de/rbruno/cmdr_events.git" &&\
