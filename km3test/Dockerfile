@@ -8,6 +8,12 @@ FROM ph2_km3base:1.0
 
 ENV JPPREL=v17.3.2
 ENV TESTUSR=km3net
+ENV DOMNET=192.168.1.0
+ENV DOMNETMASK=255.255.255.0
+ENV DOMNET_DHCP_FROM=192.168.1.10
+ENV DOMNET_DHCP_TO=192.168.1.30
+ENV NTP_HOST=192.168.1.1
+ENV CLB_BUILD="https://sftp.km3net.de/CLB_Builds/clb-client-v1.2.1.tar.gz"
 
 USER $TESTUSR
 WORKDIR /home/$TESTUSR
@@ -93,26 +99,6 @@ RUN echo "SET PASSWORD FOR root@localhost=PASSWORD('');" > dbuser.sql &&\
 USER root
 WORKDIR /usr
 
-ENV DOMNET=192.168.1.0
-ENV DOMNETMASK=255.255.255.0
-ENV DOMNET_DHCP_FROM=192.168.1.10
-ENV DOMNET_DHCP_TO=192.168.1.30
-ENV NTP_HOST=192.168.1.1
-
-# Fake dhcp
-RUN mkdir -p /etc/dhcp &&\
-    echo "default-lease-time 600;" >/etc/dhcp/dhcpd.conf &&\
-    echo "max-lease-time 7200;" >>/etc/dhcp/dhcpd.conf &&\
-    echo "ddns-update-style none;" >>/etc/dhcp/dhcpd.conf &&\
-    echo "authoritative;" >>/etc/dhcp/dhcpd.conf &&\
-    echo "" >>/etc/dhcp/dhcpd.conf &&\
-    echo "# keep this line unchanged! it is needed for a proper working new_dom.py script" >>/etc/dhcp/dhcpd.conf &&\
-    echo "" >>/etc/dhcp/dhcpd.conf &&\
-    echo "subnet $DOMNET netmask $DOMNETMASK {" >>/etc/dhcp/dhcpd.conf &&\
-    echo "  range dynamic-bootp $DOMNET_DHCP_FROM $DOMNET_DHCP_TO;" >>/etc/dhcp/dhcpd.conf &&\
-    echo "  #dynamic-bootp-lease-length 2;" >>/etc/dhcp/dhcpd.conf &&\
-    echo "}" >>/etc/dhcp/dhcpd.conf
-
 # Network tools
 RUN yum install -y nc\
                    arp-scan\
@@ -139,22 +125,15 @@ RUN yum install -y ntp\
                    ImageMagick\
                    python3-tkinter
 
-# NTP configuration
-RUN mv /etc/ntp.conf /etc/ntp.conf_ntp &&\
-    echo "driftfile /var/lib/ntp/drift" >/etc/ntp.conf &&\
-    echo "restrict 127.0.0.1" >>/etc/ntp.conf &&\
-    echo "restrict ::1" >>/etc/ntp.conf &&\
-    echo "restrict $DOMNET mask $DOMNETMASK nomodify notrap" >>/etc/ntp.conf &&\
-    echo "server $NTP_HOST iburst" >>/etc/ntp.conf
-
 # cmdr_events contains useful tools for WWRS DOM testing
 RUN su - $TESTUSR -c "git clone https://git.km3net.de/rbruno/cmdr_events.git" &&\
     su - $TESTUSR -c "mkdir -p ~/bin" &&\
-    su - $TESTUSR -c "cp cmdr_events/wrs_setup.sh ~/bin" &&\
-    su - $TESTUSR -c "cp cmdr_events/get_clbs ~/bin" &&\
-    su - $TESTUSR -c "cp cmdr_events/ctrl_mon ~/bin" &&\
-    su - $TESTUSR -c "cp cmdr_events/cmdr_commons ~/bin" &&\
-    su - $TESTUSR -c "cp cmdr_events/ctrl.conf ~/bin"
+    su - $TESTUSR -c "cp cmdr_events/tools/* ~/bin"
+
+# Install CLB_BUILD (cmdr)
+RUN su - $TESTUSR -c "wget $CLB_BUILD" &&\
+    su - $TESTUSR -c "tar xvf `basename $CLB_BUILD`" &&\
+    su - $TESTUSR -c "CLBBUILDTAR=`basename $CLB_BUILD` && CLBBUILDDIR=\${CLBBUILDTAR%.*.*} && echo \"export PATH=\$PATH:~/\$CLBBUILDDIR/bin\" >> ~/.bashrc"
 
 # Fix on takePMTData.py
 RUN su - $TESTUSR -c "cp -r $JPPREL/software/JDOMProduction $JPPREL/examples/"
