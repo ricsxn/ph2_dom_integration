@@ -45,7 +45,7 @@ The km3test image can be configured using environment variables described below:
 To enter the test console use the docker command:
 
 ```bash
-docker exec -it km3test /bin/bash -c "su - km3net -c 'export DISPLAY=:0 && gnome-terminal'"
+xhost + && docker exec -it km3test /bin/bash -c "su - km3net -c 'export DISPLAY=:0 && gnome-terminal'"
 ``
 
 * DOM Network environment variables
