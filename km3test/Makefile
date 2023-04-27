@@ -11,22 +11,22 @@ default:
 	@echo "    gitlabpush: Push the gitlab image into gitlab registry '$(GITLAB_REG)/$(IMG_NAME):$(IMG_TAG)'"
 
 image:
+	#@docker build --no-cache -t $(IMG_NAME):$(IMG_TAG) .
 	@docker build -t $(IMG_NAME):$(IMG_TAG) .
 
 regpush: image
 	@docker tag $(IMG_NAME):$(IMG_TAG) $(LOCAL_REG)/$(IMG_NAME):$(IMG_TAG)
 	@docker push $(LOCAL_REG)/$(IMG_NAME):$(IMG_TAG)
 
-gitlabimage:
-	docker build -t $(GITLAB_REG)/$(IMG_NAME):$(IMG_TAG) .
+gitlabimage: image
+	@docker tag $(IMG_NAME):$(IMG_TAG) $(GITLAB_REG)/$(IMG_NAME):$(IMG_TAG)
 
 gitlabpush: gitlabimage
-	docker tag $(GITLAB_REG)/$(IMG_NAME):$(IMG_TAG) $(GITLAB_REG)/$(IMG_NAME):$(IMG_TAG)
 	docker push $(GITLAB_REG)/$(IMG_NAME):$(IMG_TAG)
 
 test:
 	@docker run -dti\
-                --name $(ph2_km3base)_test\
-                -h $(ph2_km3base)_test\
+                --name $(IMG_NAME)_test\
+                -h $(IMG_NAME)_test\
                 --network host\
                 $(IMG_NAME):$(IMG_TAG)
