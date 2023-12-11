@@ -1,5 +1,5 @@
 IMG_NAME = ph2_km3test
-IMG_TAG = 1.0
+IMG_TAG = 1.1
 LOCAL_REG = localhost:5000
 GITLAB_REG = git.km3net.de:4567/rbruno/ph2_dom_integration
 

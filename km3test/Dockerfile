@@ -138,6 +138,12 @@ RUN su - $TESTUSR -c "wget $CLB_BUILD" &&\
 # Fix on takePMTData.py
 RUN su - $TESTUSR -c "cp -r $JPPREL/software/JDOMProduction $JPPREL/examples/"
 
+# 06.12.2023 Fix on km3db, upgrade package 0.5.1 -> km3db==0.13.1
+RUN su - $TESTUSR -c "pip install -U km3db"
+
+# Add ~/.local/bin to PATH
+RUN su - $TESTUSR -c "echo \"export PATH=\$PATH:~/.local/bin\" >> ~/.bashrc"
+
 # Execution script
 COPY km3test /usr/km3test
 
