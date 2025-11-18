@@ -7,6 +7,9 @@ on:
 
 jobs:
   build-and-push:
+    # (!) Remove the following 'if' line to enable the workflow
+    if: ${{ false }}
+    
     runs-on: ubuntu-latest
 
     permissions:
