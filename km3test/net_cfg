@@ -1,0 +1,3 @@
+docker network create -d macvlan --subnet=192.168.1.200/22 --gateway=192.168.1.1 -o parent=enp2s0 wrs_net
+docker  run --name km3test --net=wrs_net --ip=192.168.1.201 -itd km3/km3test:1.0
+docker network connect bridge km3test
